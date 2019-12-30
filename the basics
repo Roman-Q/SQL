@@ -1,0 +1,115 @@
+Перед созданием базы ее необходимо заранее спроектировать(обозначить сущности в виде таблицы(например, user, product, cart, product_info и т.д.)и их
+поля(например айди, имя, к.т., описание и т.д.). 
+Суть реляционной базы данных состоит в связях между сущностями(relation). Например, фотография товара должна ссылаться на конкретный товар.
+Сущности могут быть связаны между собой в форме либо один к одному, либо один ко многим.
+Например:
+------------                -----------
+customer                     product    
+------------                ----------                              
+id                          id
+name                        name
+phone                       description
+email                       price
+
+-------------               --------------
+cart_product                 product_photo
+-------------               --------------
+cart_id                     id
+product_id                  url
+                            product_id
+------------
+cart                        
+------------
+id
+customer_id
+
+Создаем базу данных и коннектимся к ней:
+create database shop 
+/c shop
+
+Вывод всех созданных таблиц бд и их сущностей:
+/d
+
+Создаем cоответствующие таблицы сущностей:
+create table customer(
+id serial primary key, //уникальный первичный ключ(идентификатор) каждого польз-ля магазина, создается автоматически по порядку
+name varchar(255), //varchar отвечает за допустимое кл-во символов в поле
+phone varchar(30),
+email varchar(255)
+);
+
+Проверить описание таблицы:
+/d customer
+
+Создаем связи между таблицами: 
+create table cart(
+customer_id integer references customer(id), //идет ссылка на поле другой таблицы
+id serial primary key
+);
+
+При проверке описания таблицы будут указаны ссылки (FOREIGN KEY REFERENCES) на поля других таблиц.
+
+Заполнение таблицы данными:
+insert into customer (name, phone, email) values ('Ihor', '111', 'ihor@gmail.com');//вводим данные без id, которое создается автоматически
+//при успешном добавлении будет выведена команда INSERT 0 1
+
+Вывести все данные с таблицы:
+select * from customer; 
+
+Связать, например, фото продукта с товаром(таблицы product_photo и product условно созданы):
+insert into product_photo (url, product_id) values ('phone_photo1', 1); //передаем url фото и вяжем по id с соот-щим товаром(полем) в таблице продуктов
+
+Выбор отдельного и несколько полей таблицы:
+select url from product_photo
+select url, product_id from product_photo
+
+Выбрать связанные поля разных таблиц в одну общую(например, все url фото и названия соответствующих им товаров):
+select * from product_photo pp //создаем псевдоним(alias) таблице
+//популярной также является команда INNER JOIN - обьединение полей выбранных таблиц, существует команда RIGHT JOIN - противоположность LEFT JOIN
+select pp.* from product_photo pp left join product p on p.id=pp.product_id //left join оператор формирует таблицу из выбранных записей таблиц(условно левой 1-й и правой 2-й, on - определяет какие поля таблиц мы соединяем
+select pp.*, p.name from product_photo pp left join product p on p.id=pp.product_id//добавляем в общую таблицу еще столбик с name продукта
+//В 1-й(левой)таблице (product_photo) создаются Foreign-key substraints(результат созданной выше связи двух полей разных таблиц):"product_photo_product_id_fkey" FOREIGN KEY ...
+
+При необходимости удалить substrain(субстрат, соединение):
+alter table product_photo drop constraint product_photo_product_id_fkey
+
+При необходимости удалить поле таблицы:
+delete from produdct_prhoto where id=2;
+
+Обновить запись поля:
+update product_photo set url='phone_image_2' where id=1;
+
+Добавить заказ в корзину, например:
+insert into cart_product (cart_id, product_id) values (1, 1), (1,2) //cart_product имеет связь один ко многим и содержит таким образом ссылки на поля других таблиц по id продуктов
+
+
+Формируем таблицу из имен клиентов и общей суммы заказа клиента:
+select c.name from customer c//создали alias и выбрали 1-ю колонку name, включив в нее все поля c именами клиентов и alias customerу = c
+select c.name from customer c left join cart on cart.customer_id=c.id//джоиним customer с cart
+
+select c.name, cart.id as cart_id from customer c left join cart on cart.customer_id=c.id//добавили в выходное поле идентификатор корзины
+
+select c.name, cart.id as cart_id, cp.product_id, p.price from customer c left join cart on cart.customer_id=c.id left join cart_product cp on cp.cart_id=cart_id left
+join product p on p.id=cp.product_id//добавляем в вывод id продуктов клиента и их цену
+
+select c.name, c.price from customer c left join cart on cart.customer_id=c.id left join cart_product cp on cp.cart_id=cart.id left
+join product p on p.id=cp.product_id//выводим имя и цену продуктов
+
+select c.name, sum(p.price) from customer c left join cart on cart.customer_id=c.id left join cart_product cp on cp.cart_id=cart.id left
+join product p on p.id=cp.product_id group by с.name order by orders_sum desc//указываем запись какой таблицы хотим сгруппировать + общую сумму и сортируем клиентов 
+с наиболее высокой суммой покупки определяя их в топ списка
+
+select c.name, sum(p.price) from customer c left join cart on cart.customer_id=c.id left join cart_product cp on cp.cart_id=cart.id left
+join product p on p.id=cp.product_id group by с.name having sum(p.price)>0//выбираем при условию суммы покупки более нуля
+
+Выбрать определенное кл-во клиентов:
+select * from customer order by name using ~<~ limit 2; //будет выбрано 2 клиента, выданный выбор будет основан на байтовом значении имен(условно в алф.порядке)ж
+
+
+
+
+
+
+
+
+
